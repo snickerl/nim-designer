@@ -8,12 +8,14 @@ import net.sf.json.JSONObject;
 
 import org.dom4j.Element;
 
+import com.poweruniverse.nim.bean.UserInfo;
+
 public class GridElParser {
 
 	/**
 	 * 集合类型数据源的解析
 	 */
-	public static JSONObject parseGridEl(Element gridEl,JSONObject params,Map<String, Object> root,Integer yongHuDM) throws Exception{
+	public static JSONObject parseGridEl(Element gridEl,JSONObject params,Map<String, Object> root,UserInfo user) throws Exception{
 		String gridScriptContent = "";
 		String dataLoadContent = "";
 		
@@ -40,7 +42,7 @@ public class GridElParser {
 		if(datasourceEl!=null){
 			datasourceName = name+"_datasource_";
 			
-			JSONObject fieldDatasetResult = DatasourceElParser.parseDatasetEl(datasourceEl, params, root, yongHuDM,datasourceName);
+			JSONObject fieldDatasetResult = DatasourceElParser.parseDatasetEl(datasourceEl, params, root, user,datasourceName);
 			gridScriptContent += fieldDatasetResult.getString("dataScriptContent");
 			dataLoadContent += fieldDatasetResult.getString("dataLoadContent");
 		}

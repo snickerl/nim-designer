@@ -7,7 +7,7 @@ import net.sf.json.JSONObject;
 
 import org.dom4j.Element;
 
-import com.poweruniverse.nim.system.service.PageService;
+import com.poweruniverse.nim.designer.utils.PageAnalyseUtils;
 
 public class ImportElParser {
 
@@ -31,7 +31,7 @@ public class ImportElParser {
 		JSONObject listenersObj = new JSONObject();
 		listenersObj.put("onLoad",onLoad);
 		
-		JSONArray parameters =  PageService.getParametersFromEl(importEl,root,params);
+		JSONArray parameters =  PageAnalyseUtils.getParametersFromEl(importEl,root,params);
 		
 		String importCmpType = importEl.attributeValue("component");
 		if("importSubpage".equals(importCmpType)){

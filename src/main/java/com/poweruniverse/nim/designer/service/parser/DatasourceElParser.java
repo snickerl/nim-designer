@@ -9,19 +9,22 @@ import net.sf.json.JSONObject;
 
 import org.dom4j.Element;
 
-import com.extjs.gxt.ui.client.data.ModelData;
-import com.poweruniverse.nim.system.service.PageService;
-import com.poweruniverse.nim.system.utils.BaseJavaDatasource;
-import com.poweruniverse.oim.server.entity.system.GongNeng;
-import com.poweruniverse.oim.server.entity.system.ShiTiLei;
-import com.poweruniverse.oim.server.util.HibernateSessionFactory;
+import com.poweruniverse.nim.bean.Components;
+import com.poweruniverse.nim.bean.UserInfo;
+import com.poweruniverse.nim.designer.utils.BaseJavaDatasource;
+import com.poweruniverse.nim.designer.utils.PageAnalyseUtils;
+import com.poweruniverse.nim.esb.message.InvokeEnvelope;
+import com.poweruniverse.nim.esb.translator.DataRequestTranslator;
+import com.poweruniverse.nim.esb.utils.ServiceRouter;
+import com.poweruniverse.nim.interfaces.entity.ShiTiLeiI;
+import com.poweruniverse.nim.interfaces.message.ReturnI;
 
 public class DatasourceElParser {
 
 	/**
 	 * 集合类型数据源的解析
 	 */
-	public static JSONObject parseDatasetEl(Element datasetEl,JSONObject params,Map<String, Object> root,Integer yongHuDM,String realDsName) throws Exception{
+	public static JSONObject parseDatasetEl(Element datasetEl,JSONObject params,Map<String, Object> root,UserInfo user,String realDsName) throws Exception{
 		String dataScriptContent = "";
 		String dataLoadContent = "";
 		//数据源名称
@@ -51,12 +54,12 @@ public class DatasourceElParser {
 			JSONObject listenersObj = new JSONObject();
 			listenersObj.put("onLoad",datasetEl.attributeValue("onLoad"));
 			
-			JSONArray parameters =  PageService.getParametersFromEl(datasetEl,root,params);
+			JSONArray parameters =  PageAnalyseUtils.getParametersFromEl(datasetEl,root,params);
 			
 			Element fieldsEl = datasetEl.element("properties");
 			JSONArray fieldJsonArray = new JSONArray();
 			if(fieldsEl!=null){
-				fieldJsonArray = PageService.getFieldsDefByEL(fieldsEl,null,true);
+				fieldJsonArray = PageAnalyseUtils.getFieldsDefByEL(fieldsEl,null,true);
 			}
 			
 			//将数据转换为json格式 添加到页面中
@@ -113,7 +116,7 @@ public class DatasourceElParser {
 				if(params!=null){
 					sqlString = "<#assign _paramsString>"+params.toString()+"</#assign><#assign params = _paramsString?eval />"+sqlString;
 				}
-				sqlString = PageService.processTemplate(sqlString, root,null);
+				sqlString = PageAnalyseUtils.processTemplate(sqlString, root,null);
 			}
 			sqlString = sqlString.replaceAll("\\\\n", " ");
 			
@@ -139,7 +142,7 @@ public class DatasourceElParser {
 			if(fieldsEl==null){
 				fieldJsonArray = JSONArray.fromObject("[]");
 			}else{
-				fieldJsonArray = PageService.getFieldsDefByEL(fieldsEl,null,true);
+				fieldJsonArray = PageAnalyseUtils.getFieldsDefByEL(fieldsEl,null,true);
 			}
 			
 			//将数据转换为json格式 添加到页面中
@@ -156,16 +159,22 @@ public class DatasourceElParser {
 					"fields:" +fieldJsonArray.toString()+"\n"+
 			"});\n";
 			if("true".equals(autoLoad)){
-				JSONObject dataResult = com.poweruniverse.nim.system.utils.DataUtils.getSqlData( sqlString,start,limit,fieldJsonArray);
+				InvokeEnvelope invokeEnvelope = DataRequestTranslator.getSqlInvokeEnvelope(Components.getComponent("nim-designer"),user,sqlString,start,limit,fieldJsonArray);
+				
+				ReturnI result = ServiceRouter.invokeService(invokeEnvelope);
+				
+				Integer totalCount = (Integer)result.get("totalCount");
+				JSONArray rows = (JSONArray)result.get("data");
+				
 				dataScriptContent += "_dataset_"+name+"_init_data = {\n" +
 						"start:" +start+",\n"+
 						"limit:" +limit+",\n"+
-						"totalCount:" +dataResult.getInt("totalCount")+",\n"+
-						"rows:" +dataResult.getJSONArray("rows")+"\n"+
+						"totalCount:" +totalCount+",\n"+
+						"rows:" +rows+"\n"+
 				"};\n";
 				dataLoadContent += "_dataset_"+name+".loadData(_dataset_"+name+"_init_data);\n\n";
 				
-				root.put(name, dataResult.getJSONArray("rows"));
+				root.put(name, rows);
 			}
 			//注册
 			dataScriptContent += "_page_widget.register(_dataset_"+name+")\n";
@@ -231,15 +240,15 @@ public class DatasourceElParser {
 				limit = Integer.parseInt(limitString);
 			}
 			
-			JSONArray filters = PageService.getFiltersFromEl(datasetEl,root,params);
-			JSONArray sorts = PageService.getSortsFromEl(datasetEl,root,params);
+			JSONArray filters = PageAnalyseUtils.getFiltersFromEl(datasetEl,root,params);
+			JSONArray sorts = PageAnalyseUtils.getSortsFromEl(datasetEl,root,params);
 			
 			//toDoDataset events
 			JSONObject listenersObj = new JSONObject();
 			listenersObj.put("onLoad",datasetEl.attributeValue("onLoad"));
 			
 			//取得json格式的数据
-			ShiTiLei dataStl = ShiTiLei.getShiTiLeiByDH(shiTiLeiDH);
+			ShiTiLeiI dataStl = ShiTiLei.getShiTiLeiByDH(shiTiLeiDH);
 			if(dataStl==null){
 				throw new Exception("实体类("+shiTiLeiDH+")不存在！");
 			}
@@ -253,7 +262,7 @@ public class DatasourceElParser {
 					"name:'"+dataStl.getPaiXuLie()+"',fieldType:'string'" +
 				"}]");
 			}else{
-				fieldJsonArray = PageService.getFieldsDefByEL(fieldsEl,dataStl,false);
+				fieldJsonArray = PageAnalyseUtils.getFieldsDefByEL(fieldsEl,dataStl,false);
 			}
 			
 			//将数据转换为json格式 添加到页面中
@@ -318,8 +327,8 @@ public class DatasourceElParser {
 				limit = Integer.parseInt(limitString);
 			}
 			
-			JSONArray filters = PageService.getFiltersFromEl(datasetEl,root,params);
-			JSONArray sorts = PageService.getSortsFromEl(datasetEl,root,params);
+			JSONArray filters = PageAnalyseUtils.getFiltersFromEl(datasetEl,root,params);
+			JSONArray sorts = PageAnalyseUtils.getSortsFromEl(datasetEl,root,params);
 			
 			//取得json格式的数据
 			GongNeng dataGn = GongNeng.getGongNengByDH(gongNengDH);
@@ -336,7 +345,7 @@ public class DatasourceElParser {
 					"name:'"+dataGn.getShiTiLei().getPaiXuLie()+"',fieldType:'string'" +
 				"}]");
 			}else{
-				fieldJsonArray = PageService.getFieldsDefByEL(fieldsEl,dataGn.getShiTiLei(),false);
+				fieldJsonArray = PageAnalyseUtils.getFieldsDefByEL(fieldsEl,dataGn.getShiTiLei(),false);
 			}
 			
 			//将数据转换为json格式 添加到页面中
@@ -390,7 +399,7 @@ public class DatasourceElParser {
 	/**
 	 * 记录类型数据源的解析
 	 */
-	public static JSONObject parseDataRecordEl(Element recordEl,JSONObject params,Map<String, Object> root,Integer yongHuDM,String realDsName) throws Exception{
+	public static JSONObject parseDataRecordEl(Element recordEl,JSONObject params,Map<String, Object> root,UserInfo user,String realDsName) throws Exception{
 		String dataScriptContent = "";
 		String dataLoadContent = "";
 		
@@ -415,7 +424,7 @@ public class DatasourceElParser {
 				if(params!=null){
 					sqlString = "<#assign _paramsString>"+params.toString()+"</#assign><#assign params = _paramsString?eval />"+sqlString;
 				}
-				sqlString = PageService.processTemplate(sqlString, root,null);
+				sqlString = PageAnalyseUtils.processTemplate(sqlString, root,null);
 			}
 			sqlString = sqlString.replaceAll("\\\\n", " ");
 			
@@ -424,7 +433,7 @@ public class DatasourceElParser {
 			if(fieldsEl==null){
 				fieldJsonArray = JSONArray.fromObject("[]");
 			}else{
-				fieldJsonArray = PageService.getFieldsDefByEL(fieldsEl,null,true);
+				fieldJsonArray = PageAnalyseUtils.getFieldsDefByEL(fieldsEl,null,true);
 			}
 			
 			//将数据转换为json格式 添加到页面中
@@ -464,7 +473,7 @@ public class DatasourceElParser {
 					if(params!=null){
 						idString = "<#assign _paramsString>"+params.toString()+"</#assign><#assign params = _paramsString?eval />"+idString;
 					}
-					idString = PageService.processTemplate(idString, root,null);
+					idString = PageAnalyseUtils.processTemplate(idString, root,null);
 				}
 				idString = idString.replaceAll("\\\\n", "");
 				id = Integer.valueOf(idString);
@@ -484,7 +493,7 @@ public class DatasourceElParser {
 					"name:'"+dataGn.getShiTiLei().getPaiXuLie()+"',fieldType:'string'" +
 				"}]");
 			}else{
-				fieldJsonArray = PageService.getFieldsDefByEL(fieldsEl,dataGn.getShiTiLei(),false);
+				fieldJsonArray = PageAnalyseUtils.getFieldsDefByEL(fieldsEl,dataGn.getShiTiLei(),false);
 			}
 			
 			//将数据转换为json格式 添加到页面中
@@ -539,7 +548,7 @@ public class DatasourceElParser {
 				if(params!=null){
 					id = "<#assign _paramsString>"+params.toString()+"</#assign><#assign params = _paramsString?eval />"+id;
 				}
-				id = PageService.processTemplate(id, root,null);
+				id = PageAnalyseUtils.processTemplate(id, root,null);
 			}
 			id = id.replaceAll("\\\\n", " ");
 			
@@ -552,7 +561,7 @@ public class DatasourceElParser {
 					"name:'"+dataStl.getPaiXuLie()+"',fieldType:'string'" +
 				"}]");
 			}else{
-				fieldJsonArray = PageService.getFieldsDefByEL(fieldsEl,dataStl,false);
+				fieldJsonArray = PageAnalyseUtils.getFieldsDefByEL(fieldsEl,dataStl,false);
 			}
 			
 			//将数据转换为json格式 添加到页面中
@@ -633,7 +642,7 @@ public class DatasourceElParser {
 				if(params!=null){
 					sqlString = "<#assign _paramsString>"+params.toString()+"</#assign><#assign params = _paramsString?eval />"+sqlString;
 				}
-				sqlString = PageService.processTemplate(sqlString, root,null);
+				sqlString = PageAnalyseUtils.processTemplate(sqlString, root,null);
 			}
 			sqlString = sqlString.replaceAll("\\\\n", " ");
 			

@@ -8,14 +8,15 @@ import net.sf.json.JSONObject;
 
 import org.dom4j.Element;
 
-import com.poweruniverse.nim.system.service.DesignerService;
+import com.poweruniverse.nim.bean.UserInfo;
+import com.poweruniverse.nim.designer.service.DesignerService;
 
 public class FormElParser {
 
 	/**
 	 * 集合类型数据源的解析
 	 */
-	public static JSONObject parseFormEl(Element formEl,JSONObject params,Map<String, Object> root,Integer yongHuDM) throws Exception{
+	public static JSONObject parseFormEl(Element formEl,JSONObject params,Map<String, Object> root,UserInfo user) throws Exception{
 		String formScriptContent = "";
 		String dataLoadContent = "";
 
@@ -126,7 +127,7 @@ public class FormElParser {
 			if(datasourceEl!=null){
 				datasourceName = name+"_datasource_";
 				
-				JSONObject _dataRecordResult = DatasourceElParser.parseDataRecordEl(datasourceEl, params, root, yongHuDM,datasourceName);
+				JSONObject _dataRecordResult = DatasourceElParser.parseDataRecordEl(datasourceEl, params, root, user,datasourceName);
 				formScriptContent += _dataRecordResult.getString("dataScriptContent");
 				dataLoadContent += _dataRecordResult.getString("dataLoadContent");
 			}
@@ -238,7 +239,7 @@ public class FormElParser {
 					//处理字段的数据源定义
 					Element fieldDatasetEl = fieldEl.element("dataset");
 					if(fieldDatasetEl!=null){
-						JSONObject fieldDatasetResult = DatasourceElParser.parseDatasetEl(fieldDatasetEl, params, root, yongHuDM,fieldObj.getString("name")+"_datasource_");
+						JSONObject fieldDatasetResult = DatasourceElParser.parseDatasetEl(fieldDatasetEl, params, root, user,fieldObj.getString("name")+"_datasource_");
 						fieldsPreScript += fieldDatasetResult.getString("dataScriptContent");
 						fieldsPreScript += fieldDatasetResult.getString("dataLoadContent");
 						
@@ -271,7 +272,7 @@ public class FormElParser {
 			if(datasourceEl!=null){
 				datasourceName = name+"_datasource_";
 				
-				JSONObject _dataRecordResult = DatasourceElParser.parseDataRecordEl(datasourceEl, params, root, yongHuDM,datasourceName);
+				JSONObject _dataRecordResult = DatasourceElParser.parseDataRecordEl(datasourceEl, params, root, user,datasourceName);
 				formScriptContent += _dataRecordResult.getString("dataScriptContent");
 				dataLoadContent += _dataRecordResult.getString("dataLoadContent");
 			}
