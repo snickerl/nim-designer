@@ -13,7 +13,7 @@ public class Component implements ComponentI{
 	
 	
 	/**
-	 * 初始化本组件
+	 * 初始化本组件  
 	 * 在指定地址和端口号上 发布当前组件中的webservice服务
 	 */
 	public void initial(String contextPath,ComponentInfo cfg) {
